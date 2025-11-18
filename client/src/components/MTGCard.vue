@@ -2004,7 +2004,7 @@
 		color: #fff;
 		font-size: 2.1mm;
 		letter-spacing: 0.1mm;
-		font-family: MPlatin-Italtic;
+		font-family: MPlantin-Italtic;
 		font-style: italic;
 		line-height: 3.1mm;
 		text-align: center;
@@ -2698,7 +2698,7 @@
 
 	.oracle-flavor,
 	:deep(.oracle-reminder) {
-		font-family: MPlantin-Italic;
+		/* font-family: MPlantin-Italic; */
 		font-style: italic;
 	}
 
