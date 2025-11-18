@@ -1,5 +1,9 @@
 # MTGRender
 
+## Changes
+
+- Illustration upscaling removed to reduce dependency size. The UI options and code paths for Upscaler have been deleted; output quality is unchanged except no super-resolution step is performed.
+
 ## TODO list
 
 -   Remove everything from under .inner-frame: the filter applied on this element messed a lot of things (for example the drop shadow will be visible behind the transparent oracle box of planeswalkers, darkening the illustration)

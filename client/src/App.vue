@@ -322,19 +322,6 @@ import IllustrationEditor from "./components/IllustrationEditor.vue";
 
 import { download } from "./utils";
 
-let upscaler_instance = null;
-let upscaler_loaded_model = null;
-const upscaler = async (model) => {
-	if (!upscaler_instance || model !== upscaler_loaded_model) {
-		await import("upscaler").then((Upscaler) => {
-			upscaler_instance = new Upscaler.default({
-				model: model,
-			});
-		});
-		upscaler_loaded_model = model;
-	}
-	return upscaler_instance;
-};
 
 function openModal(props = {}) {
 	const div = document.createElement("div");
@@ -377,8 +364,7 @@ export default {
 			? JSON.parse(savedRenderOptions)
 			: {
 					margin: 3,
-					upscale: false,
-					upscalerModel: "div2k/rdn-C3-D10-G64-G064-x2",
+					optimize: false,
 			  };
 		const defaultCardProperties = JSON.parse(
 			localStorage.getItem("defaultCardProperties") ?? "{}"
@@ -396,8 +382,6 @@ export default {
 			autocompleteStatus: null,
 			renderOptions,
 			rendering: false,
-			upscaling: false,
-			upscaleCache: {},
 			currentTab: 0,
 			jsonView,
 			store,
@@ -605,29 +589,6 @@ export default {
 			}
 			*/
 		},
-		async upscale(imageURL, progress_callback) {
-			this.upscaling = true;
-			const blob = await fetch(imageURL).then((response) => response.blob());
-			const imageObjectURL = URL.createObjectURL(blob);
-			const default_progress = (arg) => {
-				console.log("Upscaling... ", arg);
-			};
-			return (await upscaler(this.renderOptions.upscalerModel))
-				.upscale(imageObjectURL, {
-					patchSize: 64,
-					padding: 6,
-					progress: progress_callback ?? default_progress,
-				})
-				.then((img) => {
-					this.upscaling = false;
-					return img;
-				})
-				.catch((error) => {
-					console.error(error);
-					progress_callback?.(error);
-					this.upscaling = false;
-				});
-		},
 		async renderCurrent(options) {
 			const cardComp = this.$refs.cardComponent;
 			options?.progress?.push_task({
@@ -649,41 +610,7 @@ export default {
 				const margin_px = (3288 / 63.5) * this.renderOptions.margin;
 				const scale = 3288 / card_el.clientWidth / this.displayScale;
 
-				if (this.renderOptions.upscale) {
-					options?.progress?.push_step("Upscale Illustration");
-					const original =
-						cardComp.card_face?.image_uris?.art_crop ??
-						this.card.image_uris?.art_crop;
-					if (original) {
-						if (!(original in this.upscaleCache)) {
-							this.upscaleCache[original] = await this.upscale(
-								original,
-								(percent) => {
-									if (isNaN(percent)) options?.progress?.fail_step(percent);
-									else
-										options?.progress?.update_step({
-											type: "percent",
-											value: (100 * percent).toFixed(2),
-										});
-								}
-							);
-						} else options?.progress?.update_step("Cached!");
-						const illustration_el = card_el.querySelector(".illustration");
-						const backgroundImageBackup = illustration_el.style.backgroundImage;
-						illustration_el.style.backgroundImage =
-							"url(" + this.upscaleCache[original] + ")";
-						cleanup_func.push(() => {
-							illustration_el.style.backgroundImage = backgroundImageBackup;
-						});
-						await new this.$nextTick();
-						options?.progress?.end_step();
-					} else {
-						console.warn(
-							`Upscaler: '${cardComp.card_face.name}' do not have an illustration.`
-						);
-						options?.progress?.fail_step("No image");
-					}
-				}
+				// Upscaler removed: no illustration upscaling step
 
 				options?.progress?.push_step("Pre Render");
 				// FIXME: Call toPng twice to workaround image not loading on the first call
