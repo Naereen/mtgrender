@@ -346,6 +346,15 @@ function Uint8ToString(u8a) {
 	return c.join("");
 }
 
+function getQueryParams() {
+	const params = new URLSearchParams(window.location.search);
+	return {
+		card: params.get("card") || undefined,
+		set: params.get("set") || undefined,
+		cn: params.get("cn") || params.get("collector_number") || undefined,
+	};
+}
+
 export default {
 	name: "App",
 	components: {
@@ -401,8 +410,15 @@ export default {
 		};
 	},
 	mounted() {
-		if (!this.$refs.store.load_default())
-			this.loadCard("Elspeth Conquers Death");
+		// 1. Essayer de charger depuis les paramètres d'URL (card, set, cn)
+		this.loadExactCardFromUrlParams().then((loadedFromUrl) => {
+			// 2. Si rien n'a été chargé depuis l'URL, garder le comportement existant
+			if (!loadedFromUrl) {
+				if (!this.$refs.store.load_default()) {
+					this.loadCard("Elspeth Conquers Death");
+				}
+			}
+		});
 		document.addEventListener("keydown", this.keydown);
 	},
 	unmounted() {
@@ -483,6 +499,41 @@ export default {
 					}
 				});
 			return false;
+		},
+		/**
+		 * Charge une carte précise depuis Scryfall à partir de name + set + collector_number.
+		 * Utilise l'API /cards/search avec des paramètres exacts.
+		 */
+		async loadExactCardFromUrlParams() {
+			const { card, set, cn } = getQueryParams();
+			if (!card) return false; // rien à faire
+
+			try {
+				let query = `!"${card}"`;
+				if (set) query += ` set:${set}`;
+				if (cn) query += ` cn:${cn}`;
+
+				const url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(
+					query
+				)}`;
+
+				const response = await fetch(url);
+				const data = await response.json();
+
+				if (data.object === "error" || !data.data || data.data.length === 0) {
+					console.warn("Card not found from URL params:", data);
+					return false;
+				}
+
+				// On prend le premier résultat (la combinaison name+set+cn est en général unique)
+				const cardData = data.data[0];
+				this.toast(`Loaded '${cardData.name}' from Scryfall (URL params).`);
+				this.card = cardData;
+				return true;
+			} catch (err) {
+				console.error("Error loading card from URL params:", err);
+				return false;
+			}
 		},
 		editCard(key, value) {
 			if (Array.isArray(key)) {
